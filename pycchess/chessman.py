@@ -18,6 +18,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from common import *
+from chesssprites import *
 
 import sys
 import pygame
@@ -31,6 +32,7 @@ class chessman:
         self.pc = pc
         self.over_river = False
         self.surface = pygame.image.load(image_path + chessman_image[kind]).convert_alpha()
+        self.sprite = chesssprite_piece(choose_chess_image(self.surface, color))
 
     def move_check(self, x, y):
         ok = True

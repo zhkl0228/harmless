@@ -39,6 +39,8 @@ def enqueue_output(out, queue):
 
 pygame.init()
 
+DISPLAY_REFRESH = pygame.USEREVENT
+fps = 60
 screen = pygame.display.set_mode(size, 0, 32)
 chessboard = chessboard()
 
@@ -146,8 +148,9 @@ def runGame():
                     if chessboard.over:
                         chessboard.over_side = 1-chessboard.side
 
-    chessboard.draw(screen)
-    pygame.display.update()
+        if event.type == DISPLAY_REFRESH:
+            dirty_rects = chessboard.draw(screen)
+            pygame.display.update(dirty_rects)
 
     if moved:
         if chessboard.mode is NETWORK:
@@ -221,7 +224,10 @@ def runGame():
         else:
             chessboard.over = True
 
+    pygame.time.wait(int(1000.0/(fps*2)))
+
 try:
+    pygame.time.set_timer(DISPLAY_REFRESH, int(1000.0/fps))
     while True:
         runGame()
 except KeyboardInterrupt:

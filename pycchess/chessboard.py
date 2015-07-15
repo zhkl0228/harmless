@@ -32,6 +32,7 @@ class chessboard:
         self.piece = [0]*48
         self.over = False
         self.over_side = RED
+        self.cursor_updates = {}
 
     def __init__(self):
         self.clearboard()
@@ -48,6 +49,17 @@ class chessboard:
         self.select_surface = pygame.image.load(image_path + select_image).convert_alpha()
         self.done_surface = pygame.image.load(image_path + done_image).convert_alpha()
         self.over_surface = pygame.image.load(image_path + over_image).convert_alpha()
+        self.sprite_layer = pygame.sprite.LayeredDirty()
+        self.cursor_sprites = { 'select': {}, 'done': {}, 'over': {} }
+        sl = [('select', self.select_surface, 1),
+            ('done', self.done_surface, 2),
+            ('over', self.over_surface, 3)]
+        for (key, surface, layer) in sl:
+            for color in (RED, BLACK):
+                sprite = chesssprite(choose_chess_image(surface, color), layer)
+                sprite.visible = 0
+                self.sprite_layer.add(sprite)
+                self.cursor_sprites[key][color] = sprite
 
         self.check_sound = load_sound(check_sound)
         self.move_sound = load_sound(move_sound)
@@ -148,12 +160,14 @@ class chessboard:
         # else:
         #     self.side = RED
 
-    def draw(self, screen):
+    def clear_with_background(self, screen):
         screen.fill((0,0,0))
         screen.blit(self.surface, (0, 0))
+
+    def draw(self, screen):
         # offset_ = 0
-        for key in self.board.keys():
-            chessman = self.board[key]
+        self.cursor_updates.clear()
+        for key, chessman in self.board.iteritems():
             if chessman == None:
                 continue
             board_x = BORDER + chessman.x * SPACE
@@ -162,20 +176,27 @@ class chessboard:
                 offset = 0
             else:
                 offset = 53
-            screen.blit(chessman.surface, (board_x, board_y), (offset, 0, 52, 52))
+            #screen.blit(chessman.surface, (board_x, board_y), (offset, 0, 52, 52))
+            if not chessman.sprite.alive():
+                self.sprite_layer.add(chessman.sprite)
+            chessman.sprite.set_position(board_x, board_y)
 
             if key == self.selected:
-                screen.blit(self.select_surface, (board_x, board_y), (offset, 0, 52, 52))
+                #screen.blit(self.select_surface, (board_x, board_y), (offset, 0, 52, 52))
+                self.cursor_updates[('select', chessman.color)] = (board_x, board_y)
 
             if key in self.done:
-                screen.blit(self.select_surface, (board_x, board_y), (offset, 0, 52, 52))
-                offset_ = offset
+                #screen.blit(self.select_surface, (board_x, board_y), (offset, 0, 52, 52))
+                #offset_ = offset
+                latest_color = chessman.color
+                self.cursor_updates[('select', chessman.color)] = (board_x, board_y)
 
         for d in self.done:
             if d not in self.board.keys():
                 board_x = BORDER + d[0] * SPACE
                 board_y = BORDER + d[1] * SPACE
-                screen.blit(self.done_surface, (board_x, board_y), (offset_, 0, 52, 52))
+                #screen.blit(self.done_surface, (board_x, board_y), (offset_, 0, 52, 52))
+                self.cursor_updates[('done', latest_color)] = (board_x, board_y)
 
         if self.over:
             side_tag = 16 + self.over_side * 16
@@ -183,7 +204,21 @@ class chessboard:
             if king:
                 board_x = BORDER + king[0] * SPACE
                 board_y = BORDER + king[1] * SPACE
-                screen.blit(self.over_surface, (board_x, board_y), (self.over_side*53, 0, 52, 52))
+                #screen.blit(self.over_surface, (board_x, board_y), (self.over_side*53, 0, 52, 52))
+                self.cursor_updates[('over', self.over_side)] = (board_x, board_y)
+
+        for sprite_type, sprites in self.cursor_sprites.iteritems():
+            for color, sprite in sprites.iteritems():
+                if (sprite_type, color) in self.cursor_updates:
+                    board_x = self.cursor_updates[(sprite_type, color)][0]
+                    board_y = self.cursor_updates[(sprite_type, color)][1]
+                    sprite.set_position(board_x, board_y)
+                    sprite.visible = 1
+                else:
+                    sprite.visible = 0
+
+        dirty_rects = self.sprite_layer.draw(screen, self.surface)
+        return dirty_rects
 
     def check(self, side):
         side_tag = 32 - side * 16
@@ -369,6 +404,7 @@ class chessboard:
             else:
                 chessman = self.board[self.selected]
                 if chessman.move_check(x, y):
+                    is_moved = False
                     ok = self.can_move(chessman, x, y)
                     if ok:
                         chessman_ = None
@@ -411,11 +447,15 @@ class chessboard:
 
                             self.selected = ()
 
-                            return True
+                            is_moved = True
                         else:
                             self.unmake_move(self.selected, (x, y), chessman_)
 
-                    return False
+                        if not chessman_ is None:
+                            if self.piece[chessman_.pc] == 0:
+                                chessman_.sprite.remove(self.sprite_layer)
+
+                    return is_moved
 
     def make_move(self, p, n, chessman_):
         chessman = self.board[p]
