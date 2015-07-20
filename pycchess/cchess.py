@@ -20,6 +20,7 @@
 from common import *
 from chessboard import *
 from chessnet import *
+import chessai
 
 import pygame
 #import pygame._view
@@ -43,6 +44,8 @@ DISPLAY_REFRESH = pygame.USEREVENT
 fps = 60
 screen = pygame.display.set_mode(size, 0, 32)
 chessboard = chessboard()
+#ai_options = chessai.get_ai_engine_options('harmless')
+ai_options = chessai.get_ai_engine_options('eleeye')
 
 if len(sys.argv) == 2 and sys.argv[1][:2] == '-n':
     chessboard.net = chessnet()
@@ -60,7 +63,7 @@ if len(sys.argv) == 2 and sys.argv[1][:2] == '-n':
     chessboard.net.NET_HOST = sys.argv[2]
 
 elif len(sys.argv) == 1:
-    p = Popen("./harmless", stdin=PIPE, stdout=PIPE, close_fds=ON_POSIX)
+    p = Popen(ai_options['engine_executable'], stdin=PIPE, stdout=PIPE, close_fds=ON_POSIX)
     (chessboard.fin, chessboard.fout) = (p.stdin, p.stdout)
     q = Queue()
     t = Thread(target=enqueue_output, args=(chessboard.fout, q))
@@ -81,6 +84,7 @@ elif len(sys.argv) == 1:
                 break
 
     chessboard.mode = AI
+    chessboard.ai_options = ai_options
     pygame.display.set_caption("harmless")
     chessboard.side = RED
 else:

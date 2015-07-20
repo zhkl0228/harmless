@@ -32,7 +32,10 @@ class chessboard:
         self.piece = [0]*48
         self.over = False
         self.over_side = RED
+        self.fen_moves_str = ''
+        self.initial_fen_str = ''
         self.cursor_updates = {}
+        self.fen_round = 1
 
     def __init__(self):
         self.clearboard()
@@ -65,6 +68,8 @@ class chessboard:
         self.move_sound = load_sound(move_sound)
         self.capture_sound = load_sound(capture_sound)
 
+        self.ai_options = {}
+
     def add_chessman(self, kind, color, x, y, pc):
         chessman_ = chessman(kind, color, x, y, pc)
 
@@ -79,8 +84,8 @@ class chessboard:
         self.board[(x, y)] = chessman_
         self.piece[pc] = (x, y)
 
-    def get_fen(self):
-        fen_str = ''
+    def get_fen(self, force_current=False):
+        fen_str = 'fen '
         count = 0
         for j in range(10):
             for i in range(9):
@@ -106,7 +111,15 @@ class chessboard:
             fen_str += ' w'
         else:
             fen_str += ' b'
-        fen_str += ' - - 0 1'
+        fen_str += ' - - 0 %d' % self.fen_round
+
+        if self.ai_options['support_fen_startpos']:
+            if fen_str == 'fen rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR b - - 0 1':
+                fen_str = 'startpos'
+
+        if (self.ai_options['support_fen_moves'] and not force_current and
+                self.initial_fen_str and self.fen_moves_str):
+            fen_str = "%s moves %s" % (self.initial_fen_str, self.fen_moves_str)
 
         return fen_str
 
@@ -159,6 +172,8 @@ class chessboard:
         #     self.side = BLACK
         # else:
         #     self.side = RED
+
+        self.initial_fen_str = self.get_fen(True)
 
     def clear_with_background(self, screen):
         screen.fill((0,0,0))
@@ -427,6 +442,8 @@ class chessboard:
 
                             self.done = [self.selected, (x, y)]
 
+                            self.update_fen_moves(self.selected, (x, y), chessman_)
+
                             if self.move_from == LOCAL:
                                 if self.mode == NETWORK:
                                     move_str_ = move_to_str(self.selected[0],self.selected[1],x,y)
@@ -439,11 +456,13 @@ class chessboard:
 
                                 if self.mode == AI:
                                     fen_str = self.get_fen()
-                                    self.fin.write('position fen ' + fen_str + '\n')
-                                    # print "position fen %s" % fen_str
+                                    self.fin.write('position ' + fen_str + '\n')
+                                    # print "position %s" % fen_str
                                     self.fin.flush()
                                     self.fin.write('go depth ' + str(AI_SEARCH_DEPTH)  + '\n')
                                     self.fin.flush()
+
+                                self.fen_round = self.fen_round + 1
 
                             self.selected = ()
 
@@ -456,6 +475,11 @@ class chessboard:
                                 chessman_.sprite.remove(self.sprite_layer)
 
                     return is_moved
+
+    def update_fen_moves(self, selected, loc, chessman):
+        move_str = move_to_str(selected[0], selected[1], loc[0], loc[1])
+        self.fen_moves_str = (self.fen_moves_str + ' ' + move_str).strip()
+        # print '>> fen_moves_str', self.fen_moves_str
 
     def make_move(self, p, n, chessman_):
         chessman = self.board[p]
