@@ -454,9 +454,10 @@ class chessboard:
 
                                 if self.mode == AI:
                                     fen_str = self.get_fen()
+                                    print "position %s" % fen_str
                                     self.fin.write('position ' + fen_str + '\n')
-                                    # print "position %s" % fen_str
                                     self.fin.flush()
+                                    print "go depth %s" % str(AI_SEARCH_DEPTH)
                                     self.fin.write('go depth ' + str(AI_SEARCH_DEPTH)  + '\n')
                                     self.fin.flush()
 

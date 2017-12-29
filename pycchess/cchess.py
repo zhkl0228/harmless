@@ -30,6 +30,7 @@ import sys
 from subprocess import PIPE, Popen
 from threading import Thread
 from Queue import Queue, Empty
+import os
 
 ON_POSIX = 'posix' in sys.builtin_module_names
 
@@ -46,6 +47,8 @@ screen = pygame.display.set_mode(size, 0, 32)
 chessboard = chessboard()
 # ai_options = chessai.get_ai_engine_options('harmless')
 ai_options = chessai.get_ai_engine_options('eleeye')
+# ai_options = chessai.get_ai_engine_options('bitstronger')
+# ai_options = chessai.get_ai_engine_options('mars')
 
 if len(sys.argv) == 2 and sys.argv[1][:2] == '-n':
     chessboard.net = chessnet()
@@ -63,7 +66,9 @@ if len(sys.argv) == 2 and sys.argv[1][:2] == '-n':
     chessboard.net.NET_HOST = sys.argv[2]
 
 elif len(sys.argv) == 1:
-    p = Popen(ai_options['engine_executable'], stdin=PIPE, stdout=PIPE, close_fds=ON_POSIX)
+    executable = ai_options['engine_executable']
+    _cwd, _ = os.path.split(executable);
+    p = Popen(os.path.realpath(executable), stdin=PIPE, stdout=PIPE, close_fds=ON_POSIX, cwd=os.path.realpath(_cwd))
     (chessboard.fin, chessboard.fout) = (p.stdin, p.stdout)
     q = Queue()
     t = Thread(target=enqueue_output, args=(chessboard.fout, q))
@@ -82,6 +87,15 @@ elif len(sys.argv) == 1:
             sys.stdout.write(output)
             if 'ucciok' in output:
                 break
+
+    def stdin_redirect():
+        while True:
+            line = sys.stdin.readline()
+            chessboard.fin.write(line)
+            chessboard.fin.flush()
+    d = Thread(target=stdin_redirect)
+    d.daemon = True
+    d.start()
 
     chessboard.mode = AI
     chessboard.ai_options = ai_options
@@ -172,6 +186,8 @@ def runGame():
                 output = q.get_nowait()
             except Empty:
                 waiting = True
+                chessboard.fin.write("isready\n")
+                chessboard.fin.flush()
                 pygame.time.wait(int(1000.0/(fps*2)))
                 return
             else:
