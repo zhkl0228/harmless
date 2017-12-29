@@ -44,7 +44,7 @@ DISPLAY_REFRESH = pygame.USEREVENT
 fps = 60
 screen = pygame.display.set_mode(size, 0, 32)
 chessboard = chessboard()
-#ai_options = chessai.get_ai_engine_options('harmless')
+# ai_options = chessai.get_ai_engine_options('harmless')
 ai_options = chessai.get_ai_engine_options('eleeye')
 
 if len(sys.argv) == 2 and sys.argv[1][:2] == '-n':
@@ -75,7 +75,7 @@ elif len(sys.argv) == 1:
 
     while True:
         try:
-            output = q.get_nowait()
+            output = q.get(timeout=5)
         except Empty:
             continue
         else:
@@ -136,6 +136,8 @@ def runGame():
                     if not waiting or chessboard.over:
                         newGame()
                         return
+            if event.key == K_q:
+                quitGame()
 
         if event.type == MOUSEBUTTONDOWN:
             x, y = pygame.mouse.get_pos()
@@ -170,6 +172,7 @@ def runGame():
                 output = q.get_nowait()
             except Empty:
                 waiting = True
+                pygame.time.wait(int(1000.0/(fps*2)))
                 return
             else:
                 waiting = False

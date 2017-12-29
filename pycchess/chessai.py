@@ -8,7 +8,7 @@ ai_engines['harmless'] = {
 }
 ai_engines['eleeye'] = {
     'options': {
-        'engine_executable': './ELEEYE.EXE',
+        'engine_executable': './eleeye',
         'support_fen_moves': True,
         'support_fen_startpos': True
     }

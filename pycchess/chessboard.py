@@ -36,10 +36,18 @@ class chessboard:
         self.initial_fen_str = ''
         self.cursor_updates = {}
         self.fen_round = 1
+        
+        self.sprite_layer = pygame.sprite.LayeredDirty()
+        self.cursor_sprites = { 'select': {}, 'done': {}, 'over': {} }
+        sl = [('select', self.select_surface, 1), ('done', self.done_surface, 2), ('over', self.over_surface, 3)]
+        for (key, surface, layer) in sl:
+            for color in (RED, BLACK):
+                sprite = chesssprite(choose_chess_image(surface, color), layer)
+                sprite.visible = 0
+                self.sprite_layer.add(sprite)
+                self.cursor_sprites[key][color] = sprite
 
     def __init__(self):
-        self.clearboard()
-
         self.mode = NETWORK
         self.side = RED
         self.move_from = LOCAL
@@ -52,23 +60,13 @@ class chessboard:
         self.select_surface = pygame.image.load(image_path + select_image).convert_alpha()
         self.done_surface = pygame.image.load(image_path + done_image).convert_alpha()
         self.over_surface = pygame.image.load(image_path + over_image).convert_alpha()
-        self.sprite_layer = pygame.sprite.LayeredDirty()
-        self.cursor_sprites = { 'select': {}, 'done': {}, 'over': {} }
-        sl = [('select', self.select_surface, 1),
-            ('done', self.done_surface, 2),
-            ('over', self.over_surface, 3)]
-        for (key, surface, layer) in sl:
-            for color in (RED, BLACK):
-                sprite = chesssprite(choose_chess_image(surface, color), layer)
-                sprite.visible = 0
-                self.sprite_layer.add(sprite)
-                self.cursor_sprites[key][color] = sprite
 
         self.check_sound = load_sound(check_sound)
         self.move_sound = load_sound(move_sound)
         self.capture_sound = load_sound(capture_sound)
 
         self.ai_options = {}
+        self.clearboard()
 
     def add_chessman(self, kind, color, x, y, pc):
         chessman_ = chessman(kind, color, x, y, pc)
